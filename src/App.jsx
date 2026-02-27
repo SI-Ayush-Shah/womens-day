@@ -47,46 +47,28 @@ export default function App() {
     setTimeout(() => setToast(false), 3000);
   }, []);
 
-  // ── Fetch on mount + realtime subscription ──────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
+  // ── Fetch (reusable) ────────────────────────────────────────────────────
+  const fetchMessages = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: fetchError } = await supabase
+      .from('appriciation')
+      .select('uuid, "Recipient Name", "Your Message", "From", created_at')
+      .order('created_at', { ascending: true });
 
-    async function fetchMessages() {
-      setLoading(true);
-      setError(null);
-      const { data, error: fetchError } = await supabase
-        .from('appriciation')
-        .select('uuid, "Recipient Name", "Your Message", "From", created_at')
-        .order('created_at', { ascending: true });
-
-      if (cancelled) return;
-      if (fetchError) {
-        console.error('Supabase fetch error:', fetchError);
-        setError(fetchError.message);
-      } else {
-        setMessages(data ?? []);
-      }
-      setLoading(false);
+    if (fetchError) {
+      console.error('Supabase fetch error:', fetchError);
+      setError(fetchError.message);
+    } else {
+      setMessages(data ?? []);
     }
-
-    fetchMessages();
-
-    const channel = supabase
-      .channel('appriciation-channel')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'appriciation' },
-        (payload) => {
-          if (!cancelled) setMessages((prev) => [...prev, payload.new]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
+    setLoading(false);
   }, []);
+
+  // ── Fetch on mount ──────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => { await fetchMessages(); })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Insert ──────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async ({ to, message, from }) => {
@@ -103,9 +85,11 @@ export default function App() {
       throw insertError;
     }
 
+    // Re-fetch the full list so the board is always in sync with the DB
+    await fetchMessages();
     fireConfetti();
     showToast();
-  }, [showToast]);
+  }, [fetchMessages, showToast]);
 
   // ── Derived: filter + sort ───────────────────────────────────────────────
   const displayedMessages = useMemo(() => {
