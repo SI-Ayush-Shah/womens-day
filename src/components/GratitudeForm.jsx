@@ -65,14 +65,15 @@ export default function GratitudeForm({ onSubmit }) {
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="fromName">From (Optional)</label>
+          <label className="form-label" htmlFor="fromName">Your Name</label>
           <input
             id="fromName"
             type="text"
             className="form-input"
-            placeholder="Anonymous"
+            placeholder="Your name"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
+            required
           />
         </div>
 

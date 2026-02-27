@@ -1,67 +1,143 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import confetti from 'canvas-confetti';
 import './index.css';
 
+import { supabase } from './supabaseClient';
 import DecorativeBackground from './components/DecorativeBackground';
 import Hero from './components/Hero';
 import GratitudeForm from './components/GratitudeForm';
 import GratitudeBoard from './components/GratitudeBoard';
+import SearchBar from './components/SearchBar';
 import Toast from './components/Toast';
 
 // ---------------------------------------------------------------------------
-// Seed data — will be replaced by Supabase fetch
+// Helpers
 // ---------------------------------------------------------------------------
-const INITIAL_MESSAGES = [
-  {
-    id: 1,
-    to: 'Sarah Johnson',
-    message:
-      'Thank you for being such an inspiring lead. Your mentorship has changed the way I approach challenges every day!',
-    from: 'Alex P.',
-    date: 'March 8, 2024',
-  },
-  {
-    id: 2,
-    to: 'The Operations Team',
-    message:
-      'To all the women in ops: your efficiency and dedication behind the scenes are what keep this company running. You are powerhouses!',
-    from: 'David Miller',
-    date: 'March 8, 2024',
-  },
-];
+function formatDate(isoString) {
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function fireConfetti() {
+  confetti({
+    particleCount: 120,
+    spread: 80,
+    origin: { y: 0.6 },
+    colors: ['#7c3aed', '#a78bfa', '#c4b5fd', '#f9a8d4', '#ffffff'],
+  });
+}
 
 // ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
 export default function App() {
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
-  const [loading, setLoading] = useState(false); // flip to true when fetching from Supabase
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest'); // 'newest' | 'oldest'
 
-  // ── Show toast for 3 s ──────────────────────────────────────────────────
+  // ── Show toast ─────────────────────────────────────────────────────────
   const showToast = useCallback(() => {
     setToast(true);
     setTimeout(() => setToast(false), 3000);
   }, []);
 
-  // ── Handle new message submission ───────────────────────────────────────
-  // Replace this body with your Supabase insert call later.
-  const handleSubmit = useCallback(async ({ to, message, from }) => {
-    const newMessage = {
-      id: Date.now(),
-      to,
-      message,
-      from: from || 'Anonymous',
-      date: new Date().toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      }),
-    };
+  // ── Fetch on mount + realtime subscription ──────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
 
-    // TODO: await supabase.from('messages').insert([newMessage]);
-    setMessages((prev) => [...prev, newMessage]);
+    async function fetchMessages() {
+      setLoading(true);
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from('appriciation')
+        .select('uuid, "Recipient Name", "Your Message", "From", created_at')
+        .order('created_at', { ascending: true });
+
+      if (cancelled) return;
+      if (fetchError) {
+        console.error('Supabase fetch error:', fetchError);
+        setError(fetchError.message);
+      } else {
+        setMessages(data ?? []);
+      }
+      setLoading(false);
+    }
+
+    fetchMessages();
+
+    const channel = supabase
+      .channel('appriciation-channel')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'appriciation' },
+        (payload) => {
+          if (!cancelled) setMessages((prev) => [...prev, payload.new]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // ── Insert ──────────────────────────────────────────────────────────────
+  const handleSubmit = useCallback(async ({ to, message, from }) => {
+    const { error: insertError } = await supabase.from('appriciation').insert([
+      {
+        'Recipient Name': to,
+        'Your Message': message,
+        'From': from,
+      },
+    ]);
+
+    if (insertError) {
+      console.error('Supabase insert error:', insertError);
+      throw insertError;
+    }
+
+    fireConfetti();
     showToast();
   }, [showToast]);
+
+  // ── Derived: filter + sort ───────────────────────────────────────────────
+  const displayedMessages = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+
+    let filtered = messages.map((m) => ({
+      id: m.uuid,
+      to: m['Recipient Name'],
+      message: m['Your Message'],
+      from: m['From'],
+      date: formatDate(m.created_at),
+    }));
+
+    if (q) {
+      filtered = filtered.filter(
+        (m) =>
+          m.to?.toLowerCase().includes(q) ||
+          m.from?.toLowerCase().includes(q) ||
+          m.message?.toLowerCase().includes(q)
+      );
+    }
+
+    if (sortOrder === 'newest') {
+      filtered = [...filtered].reverse();
+    }
+
+    return filtered;
+  }, [messages, searchQuery, sortOrder]);
+
+  const handleSortToggle = useCallback(() => {
+    setSortOrder((prev) => (prev === 'newest' ? 'oldest' : 'newest'));
+  }, []);
 
   return (
     <>
@@ -70,12 +146,31 @@ export default function App() {
       <main className="app-wrapper">
         <Hero />
 
+        {error && (
+          <div className="error-banner">
+            ⚠️ Could not load messages: {error}
+          </div>
+        )}
+
         <div className="content-grid">
           {/* ── Left: Form ── */}
           <GratitudeForm onSubmit={handleSubmit} />
 
           {/* ── Right: Board ── */}
-          <GratitudeBoard messages={messages} loading={loading} />
+          <div>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              count={displayedMessages.length}
+              total={messages.length}
+            />
+            <GratitudeBoard
+              messages={displayedMessages}
+              loading={loading}
+              sortOrder={sortOrder}
+              onSortToggle={handleSortToggle}
+            />
+          </div>
         </div>
       </main>
 
