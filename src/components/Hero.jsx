@@ -11,7 +11,7 @@ export default function Hero() {
 
       <h1 className="serif hero__title">Happy International Women's Day</h1>
 
-      <p className="hero__dedication">To all the women players at SI,</p>
+      <p className="hero__dedication">Because you make SI better...</p>
 
       <blockquote className="hero__quote">
         "Your brilliance fuels our progress, your resilience shapes our character,
@@ -33,7 +33,7 @@ export default function Hero() {
           />
         </div>
         <p className="hero__cricket-caption">
-          🏆 Indian Women's Cricket Team — World Cup Champions
+          Indian Women's Cricket Team — World Cup Champions
         </p>
       </div>
     </header>
