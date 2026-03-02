@@ -19,10 +19,10 @@ export default function Hero() {
         foundation and the future of our success."
       </blockquote>
 
-      <p className="hero__subtitle">
+      {/* <p className="hero__subtitle">
         Happy International Women's Day 2026. Share a message of gratitude and
         celebrate the incredible women who make our organization thrive.
-      </p>
+      </p> */}
 
       <div className="hero__cricket-wrapper">
         <div className="hero__cricket-img-container">
