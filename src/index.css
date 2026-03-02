@@ -71,21 +71,86 @@ body {
   margin-bottom: 4rem;
 }
 
+.hero__logo-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.75rem;
+}
+
+.hero__logo {
+  height: 72px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(109, 40, 217, 0.18));
+}
+
 .hero__title {
   font-size: clamp(2.5rem, 8vw, 4rem);
   font-weight: 700;
   color: var(--purple-900);
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   line-height: 1.1;
 }
 
-.hero__subtitle {
+.hero__dedication {
   font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--purple-700);
+  margin-bottom: 0.75rem;
+}
+
+.hero__quote {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  font-style: italic;
+  color: var(--purple-800);
+  max-width: 46rem;
+  margin: 0 auto 1.25rem;
+  line-height: 1.8;
+  border-left: 4px solid var(--purple-400);
+  padding: 0.75rem 1.5rem;
+  background: rgba(167, 139, 250, 0.08);
+  border-radius: 0 0.75rem 0.75rem 0;
+  text-align: left;
+}
+
+.hero__subtitle {
+  font-size: 1.0625rem;
   color: var(--purple-700);
   font-weight: 300;
   max-width: 40rem;
-  margin: 0 auto;
+  margin: 0 auto 2.5rem;
   line-height: 1.6;
+}
+
+.hero__cricket-wrapper {
+  margin-top: 1rem;
+}
+
+.hero__cricket-img-container {
+  display: inline-block;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(109, 40, 217, 0.18);
+  border: 3px solid var(--purple-300);
+  max-width: 700px;
+  width: 100%;
+}
+
+.hero__cricket-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  max-height: 420px;
+}
+
+.hero__cricket-caption {
+  margin-top: 0.875rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--purple-700);
+  letter-spacing: 0.02em;
 }
 
 /* ── Grid ── */
